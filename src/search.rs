@@ -10,6 +10,7 @@ use crate::{
 pub struct Search {
     pub shared: Arc<Mutex<Shared>>,
     pub board: Board,
+    pub my_side: Side,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -43,37 +44,33 @@ impl Search {
                 make_move(&mut self.board, &Move::from_str(mov, other_pieces));
             }
         }
+
+        self.my_side = self.board.side_to_move;
     }
 
     /// find the best move for a position
     pub fn find_best_move(&mut self, _info: &GoInfo) {
-        let bestmove = self.minimax(self.board.side_to_move.to_bool(), i32::MIN, i32::MAX, 4);
+        let bestmove = self.negamax(i32::MIN, i32::MAX, 6);
         println!("bestmove {}", bestmove.mov.unwrap());
     }
 
     /// minimax
-    pub fn minimax(&mut self, maximizing: bool, mut alpha: i32, mut beta: i32, depth: u8) -> Eval {
+    pub fn negamax(&mut self, mut alpha: i32, beta: i32, depth: u8) -> Eval {
         /*
-        function alphabeta(node, depth, α, β, maximizingPlayer) is
+        function negamax(node, depth, α, β, color) is
             if depth = 0 or node is a terminal node then
-                return the heuristic value of node
-            if maximizingPlayer then
-                value := −∞
-                for each child of node do
-                    value := max(value, alphabeta(child, depth − 1, α, β, FALSE))
-                    α := max(α, value)
-                    if value ≥ β then
-                        break (* β cutoff *)
-                return value
-            else
-                value := +∞
-                for each child of node do
-                    value := min(value, alphabeta(child, depth − 1, α, β, TRUE))
-                    β := min(β, value)
-                    if value ≤ α then
-                        break (* α cutoff *)
-                return value
-                    */
+                return color × the heuristic value of node
+
+            childNodes := generateMoves(node)
+            childNodes := orderMoves(childNodes)
+            value := −∞
+            foreach child in childNodes do
+                value := max(value, −negamax(child, depth − 1, −β, −α, −color))
+                α := max(α, value)
+                if α ≥ β then
+                    break (* cut-off *)
+            return value
+                            */
 
         if depth == 0 || self.board.game_over() {
             return match self.board.status() {
@@ -92,53 +89,33 @@ impl Search {
                     },
                 },
                 Status::Ongoing => Eval {
-                    score: self.eval(),
+                    score: self.eval() * self.board.side_to_move.toi32(),
                     mov: None,
                 },
             };
         }
 
-        if maximizing {
-            let mut out = Eval {
-                score: i32::MIN,
-                mov: None,
-            };
-            for mov in &generate_moves(&self.board) {
-                let eval = self.minimax(!maximizing, alpha, beta, depth - 1);
+        let mut out = Eval {
+            score: i32::MIN,
+            mov: None,
+        };
+        for mov in &generate_moves(&self.board) {
+            let eval = self.negamax(-alpha, -beta, depth - 1);
 
-                if eval.score > out.score {
-                    out.score = eval.score;
-                    out.mov = Some(*mov);
-                }
-                alpha = alpha.max(out.score);
-                if out.score >= beta {
-                    break; // beta cutoff
-                }
+            if -eval.score > out.score {
+                out.score = -eval.score;
+                out.mov = Some(*mov);
             }
-            out
-        } else {
-            let mut out = Eval {
-                score: i32::MAX,
-                mov: None,
-            };
-            for mov in &generate_moves(&self.board) {
-                let eval = self.minimax(!maximizing, alpha, beta, depth - 1);
-                if eval.score < out.score {
-                    out.score = eval.score;
-                    out.mov = Some(*mov);
-                }
-
-                beta = beta.max(out.score);
-                if out.score <= alpha {
-                    break; // alpha cutoff
-                }
+            alpha = alpha.max(out.score);
+            if alpha >= beta {
+                break; // cutoff
             }
-            out
         }
+        out
     }
 
     fn eval(&self) -> i32 {
-        self.board.boards[Side::White as usize].count_ones() as i32
-            - self.board.boards[Side::Black as usize].count_ones() as i32
+        self.board.boards[self.board.side_to_move as usize].count_ones() as i32
+            - self.board.boards[1 - self.board.side_to_move as usize].count_ones() as i32
     }
 }

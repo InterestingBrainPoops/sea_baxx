@@ -11,7 +11,10 @@ use std::{
 };
 use text_io::read;
 
-use crate::{board::Board, search::Search};
+use crate::{
+    board::{Board, Side},
+    search::Search,
+};
 
 fn get_input() -> String {
     let mut input = String::new();
@@ -58,6 +61,7 @@ fn main() {
         let mut search = Search {
             shared: Arc::clone(&shared_for_thread),
             board: Board::new("x5o/7/7/7/7/7/o5x x 0 1".to_string()),
+            my_side: Side::Black,
         };
         loop {
             let message = if let Ok(msg) = recv.recv() {

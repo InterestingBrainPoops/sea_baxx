@@ -66,6 +66,13 @@ impl Side {
             Side::White => true,
         }
     }
+
+    pub fn toi32(&self) -> i32 {
+        match self {
+            Side::Black => -1,
+            Side::White => 1,
+        }
+    }
 }
 
 pub type BitBoard = u64;
