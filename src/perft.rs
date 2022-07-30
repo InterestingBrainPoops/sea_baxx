@@ -1,5 +1,5 @@
 use crate::{
-    board::{Board, State},
+    board::{Board},
     move_app::{make_move, unmake_move},
     movegen::generate_moves,
 };
@@ -19,7 +19,7 @@ fn perft(board: &mut Board, depth: u8, max_depth: u8) -> u64 {
         nodes += inc;
         unmake_move(board, mov, delta);
         assert_eq!(board.clone(), t1);
-        if (depth == max_depth) {
+        if depth == max_depth {
             counter += 1;
             println!("{}) {} {}", counter, mov, subtree_nodes);
             // println!("{:?}", mov);
@@ -31,10 +31,10 @@ fn perft(board: &mut Board, depth: u8, max_depth: u8) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
+    
 
     use crate::{
-        board::{Board, Side, State},
+        board::{Board},
         move_app::make_move,
         movegen::{bb_to_an, generate_moves},
     };

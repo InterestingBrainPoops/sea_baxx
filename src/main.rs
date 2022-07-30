@@ -3,7 +3,7 @@ mod move_app;
 mod movegen;
 mod perft;
 mod search;
-use movegen::Move;
+
 use std::{
     io::{self, BufRead},
     sync::{mpsc::channel, Arc, Mutex},

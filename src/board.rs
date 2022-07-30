@@ -1,6 +1,6 @@
-use std::{cmp::Ordering, ops::Not};
+use std::ops::Not;
 
-use crate::movegen::{doubles, singles};
+use crate::movegen::singles;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Board {
@@ -17,11 +17,11 @@ pub enum Side {
     White,
 }
 
-#[derive(PartialEq, Eq, Debug)]
-pub enum State {
-    Ongoing,
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Status {
     Winner(Side),
     Draw,
+    Ongoing,
 }
 
 impl From<&str> for Side {
@@ -59,6 +59,15 @@ impl From<Side> for usize {
     }
 }
 
+impl Side {
+    pub fn to_bool(&self) -> bool {
+        match self {
+            Side::Black => false,
+            Side::White => true,
+        }
+    }
+}
+
 pub type BitBoard = u64;
 
 impl Board {
@@ -81,15 +90,15 @@ impl Board {
         for text in parts[0].chars() {
             match text {
                 'x' => {
-                    out.boards[0] |= (1 << current_board_index);
+                    out.boards[0] |= 1 << current_board_index;
                     current_board_index += 1;
                 }
                 'o' => {
-                    out.boards[1] |= (1 << current_board_index);
+                    out.boards[1] |= 1 << current_board_index;
                     current_board_index += 1;
                 }
                 '-' => {
-                    out.blockers |= (1 << current_board_index);
+                    out.blockers |= 1 << current_board_index;
                     current_board_index += 1;
                 }
                 '/' => {
@@ -170,7 +179,38 @@ impl Board {
 
         true
     }
+    pub fn status(&self) -> Status {
+        let current = self.side_to_move;
+        let other = !self.side_to_move;
+        let both = self.current_pieces() | self.other_pieces();
+        let moves = singles(singles(both));
 
+        if self.current_pieces() == 0 {
+            // side to move has no pieces
+            return Status::Winner(other);
+        }
+
+        if self.other_pieces() == 0 {
+            // other person has no pieces
+            return Status::Winner(current);
+        }
+
+        if self.half_move >= 100 {
+            // 50 move rule
+            return Status::Draw;
+        }
+
+        if moves & self.empty() != 0 {
+            // side to move still has moves left
+            return Status::Ongoing;
+        }
+
+        if self.current_pieces().count_ones() > self.other_pieces().count_ones() {
+            return Status::Winner(current);
+        } else {
+            Status::Winner(other)
+        }
+    }
     pub fn current_pieces(&self) -> u64 {
         return self.boards[self.side_to_move as usize];
     }
