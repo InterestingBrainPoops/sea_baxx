@@ -54,24 +54,8 @@ impl Search {
         println!("bestmove {}", bestmove.mov.unwrap());
     }
 
-    /// minimax
+    /// negamax
     pub fn negamax(&mut self, mut alpha: i32, beta: i32, depth: u8) -> Eval {
-        /*
-        function negamax(node, depth, α, β, color) is
-            if depth = 0 or node is a terminal node then
-                return color × the heuristic value of node
-
-            childNodes := generateMoves(node)
-            childNodes := orderMoves(childNodes)
-            value := −∞
-            foreach child in childNodes do
-                value := max(value, −negamax(child, depth − 1, −β, −α, −color))
-                α := max(α, value)
-                if α ≥ β then
-                    break (* cut-off *)
-            return value
-                            */
-
         if depth == 0 || self.board.game_over() {
             return match self.board.status() {
                 Status::Draw => Eval {
