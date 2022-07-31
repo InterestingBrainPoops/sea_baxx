@@ -50,7 +50,7 @@ impl Search {
             to: 0,
             capture_square: 0,
         };
-        self.negamax(i32::MIN, i32::MAX, 3, &mut bestmove);
+        self.negamax(-100_000, 100_000, 3, &mut bestmove);
         println!("bestmove {}", bestmove);
     }
 
@@ -93,9 +93,8 @@ impl Search {
     }
 
     fn eval(&self) -> i32 {
-        self.board.boards[self.board.side_to_move as usize].count_ones() as i32
-            - self.board.boards[1 - self.board.side_to_move as usize].count_ones() as i32
-        // + singles(self.board.boards[self.board.side_to_move as usize]).count_ones() as i32
-        // - singles(self.board.boards[1 - self.board.side_to_move as usize]).count_ones() as i32
+        let us = self.board.boards[self.board.side_to_move as usize];
+        let them = self.board.boards[1 - self.board.side_to_move as usize];
+        us.count_ones() as i32 - them.count_ones() as i32
     }
 }
