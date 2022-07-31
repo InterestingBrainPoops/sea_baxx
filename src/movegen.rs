@@ -1,8 +1,8 @@
 use std::fmt::Display;
 
-use crate::board::{BitBoard, Board, State};
+use crate::board::{BitBoard, Board};
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub struct Move {
     pub null: bool,
     pub from: BitBoard,
@@ -41,8 +41,8 @@ impl Move {
 }
 
 pub fn bb_to_an(bb: u64) -> String {
-    let mut alph = ["a", "b", "c", "d", "e", "f", "g"];
-    let mut num = [1, 2, 3, 4, 5, 6, 7];
+    let alph = ["a", "b", "c", "d", "e", "f", "g"];
+    let num = [1, 2, 3, 4, 5, 6, 7];
     let ld_zero = bb.trailing_zeros();
 
     return format!(
@@ -53,8 +53,8 @@ pub fn bb_to_an(bb: u64) -> String {
 }
 
 pub fn an_to_bb(an: String) -> u64 {
-    let mut alph = ["a", "b", "c", "d", "e", "f", "g"];
-    let mut num = [1, 2, 3, 4, 5, 6, 7];
+    let alph = ["a", "b", "c", "d", "e", "f", "g"];
+    let num = [1, 2, 3, 4, 5, 6, 7];
 
     return 1
         << (alph.iter().position(|r| *r == &an[0..1]).unwrap()
@@ -177,12 +177,9 @@ pub fn singles(bb: u64) -> u64 {
 }
 
 pub fn doubles(bb: u64) -> u64 {
-    return (
-        // right
-        ((bb << 2 | bb << 10 | bb << 18 | bb >> 6 | bb >> 14 | bb << 17 | bb >> 15) & 0x7e7e7e7e7e7e7e) |
+    return ((bb << 2 | bb << 10 | bb << 18 | bb >> 6 | bb >> 14 | bb << 17 | bb >> 15) & 0x7e7e7e7e7e7e7e) |
         // center
         ((bb << 16 | bb >> 16) & 0x7f7f7f7f7f7f7f) |
         // left
-        ((bb >> 2 | bb >> 10 | bb >> 18 | bb << 6 | bb << 14 | bb << 15 | bb >> 17) & 0x3f3f3f3f3f3f3f)
-    );
+        ((bb >> 2 | bb >> 10 | bb >> 18 | bb << 6 | bb << 14 | bb << 15 | bb >> 17) & 0x3f3f3f3f3f3f3f);
 }
