@@ -61,7 +61,7 @@ impl Search {
                 Status::Draw => 0,
                 Status::Winner => 1000,
                 Status::Loser => -1000,
-                Status::Ongoing => self.eval() * self.board.side_to_move.toi32(),
+                Status::Ongoing => self.eval(),
             };
         }
 
@@ -78,6 +78,7 @@ impl Search {
             unmake_move(&mut self.board, mov, delta);
 
             if score > best_score {
+                alpha = score;
                 best_move = *mov;
                 best_score = score;
             }
@@ -92,7 +93,7 @@ impl Search {
     fn eval(&self) -> i32 {
         self.board.boards[self.board.side_to_move as usize].count_ones() as i32
             - self.board.boards[1 - self.board.side_to_move as usize].count_ones() as i32
-            + singles(self.board.boards[self.board.side_to_move as usize]).count_ones() as i32
-            - singles(self.board.boards[1 - self.board.side_to_move as usize]).count_ones() as i32
+        // + singles(self.board.boards[self.board.side_to_move as usize]).count_ones() as i32
+        // - singles(self.board.boards[1 - self.board.side_to_move as usize]).count_ones() as i32
     }
 }
