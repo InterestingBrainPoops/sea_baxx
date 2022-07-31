@@ -19,7 +19,8 @@ pub enum Side {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Status {
-    Winner(Side),
+    Winner,
+    Loser,
     Draw,
     Ongoing,
 }
@@ -194,12 +195,12 @@ impl Board {
 
         if self.current_pieces() == 0 {
             // side to move has no pieces
-            return Status::Winner(other);
+            return Status::Loser;
         }
 
         if self.other_pieces() == 0 {
             // other person has no pieces
-            return Status::Winner(current);
+            return Status::Winner;
         }
 
         if self.half_move >= 100 {
@@ -213,9 +214,9 @@ impl Board {
         }
 
         if self.current_pieces().count_ones() > self.other_pieces().count_ones() {
-            return Status::Winner(current);
+            return Status::Winner;
         } else {
-            Status::Winner(other)
+            Status::Loser
         }
     }
     pub fn current_pieces(&self) -> u64 {

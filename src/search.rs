@@ -2,8 +2,8 @@ use std::sync::{Arc, Mutex};
 
 use crate::{
     board::{Board, Side, Status},
-    move_app::make_move,
-    movegen::{generate_moves, Move},
+    move_app::{make_move, unmake_move},
+    movegen::{generate_moves, singles, Move},
     GoInfo, Shared,
 };
 
@@ -11,12 +11,6 @@ pub struct Search {
     pub shared: Arc<Mutex<Shared>>,
     pub board: Board,
     pub my_side: Side,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct Eval {
-    pub score: i32,
-    pub mov: Option<Move>,
 }
 
 impl Search {
@@ -50,56 +44,54 @@ impl Search {
 
     /// find the best move for a position
     pub fn find_best_move(&mut self, _info: &GoInfo) {
-        let bestmove = self.negamax(i32::MIN, i32::MAX, 6);
-        println!("bestmove {}", bestmove.mov.unwrap());
+        let mut bestmove = Move {
+            null: false,
+            from: 0,
+            to: 0,
+            capture_square: 0,
+        };
+        self.negamax(i32::MIN, i32::MAX, 3, &mut bestmove);
+        println!("bestmove {}", bestmove);
     }
 
     /// negamax
-    pub fn negamax(&mut self, mut alpha: i32, beta: i32, depth: u8) -> Eval {
+    pub fn negamax(&mut self, mut alpha: i32, beta: i32, depth: u8, out: &mut Move) -> i32 {
         if depth == 0 || self.board.game_over() {
             return match self.board.status() {
-                Status::Draw => Eval {
-                    score: 0,
-                    mov: None,
-                },
-                Status::Winner(side) => match side {
-                    Side::Black => Eval {
-                        score: -1000,
-                        mov: None,
-                    },
-                    Side::White => Eval {
-                        score: 1000,
-                        mov: None,
-                    },
-                },
-                Status::Ongoing => Eval {
-                    score: self.eval() * self.board.side_to_move.toi32(),
-                    mov: None,
-                },
+                Status::Draw => 0,
+                Status::Winner => 1000,
+                Status::Loser => -1000,
+                Status::Ongoing => self.eval() * self.board.side_to_move.toi32(),
             };
         }
 
-        let mut out = Eval {
-            score: i32::MIN,
-            mov: None,
+        let mut score = i32::MIN;
+        let mut best_move = Move {
+            null: false,
+            from: 0,
+            to: 0,
+            capture_square: 0,
         };
         for mov in &generate_moves(&self.board) {
-            let eval = self.negamax(-alpha, -beta, depth - 1);
-
-            if -eval.score > out.score {
-                out.score = -eval.score;
-                out.mov = Some(*mov);
+            let delta = make_move(&mut self.board, mov);
+            let value = -self.negamax(-beta, -alpha, depth - 1, out);
+            unmake_move(&mut self.board, mov, delta);
+            if value > score {
+                best_move = *mov;
             }
-            alpha = alpha.max(out.score);
-            if alpha >= beta {
-                break; // cutoff
-            }
+            score = score.max(value);
+            // alpha = alpha.max(score);
+            // if alpha >= beta {
+            //     break; // cutoff
+            // }
         }
-        out
+        *out = best_move;
+        score
     }
 
     fn eval(&self) -> i32 {
         self.board.boards[self.board.side_to_move as usize].count_ones() as i32
             - self.board.boards[1 - self.board.side_to_move as usize].count_ones() as i32
+            + singles(self.board.boards[self.board.side_to_move as usize]).count_ones() as i32
     }
 }
