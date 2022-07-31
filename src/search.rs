@@ -65,7 +65,7 @@ impl Search {
             };
         }
 
-        let mut score = i32::MIN;
+        let mut best_score = i32::MIN;
         let mut best_move = Move {
             null: false,
             from: 0,
@@ -74,24 +74,25 @@ impl Search {
         };
         for mov in &generate_moves(&self.board) {
             let delta = make_move(&mut self.board, mov);
-            let value = -self.negamax(-beta, -alpha, depth - 1, out);
+            let score = -self.negamax(-beta, -alpha, depth - 1, out);
             unmake_move(&mut self.board, mov, delta);
-            if value > score {
+
+            if score > best_score {
                 best_move = *mov;
+                best_score = score;
             }
-            score = score.max(value);
-            // alpha = alpha.max(score);
-            // if alpha >= beta {
-            //     break; // cutoff
-            // }
+            if alpha >= beta {
+                break;
+            }
         }
         *out = best_move;
-        score
+        best_score
     }
 
     fn eval(&self) -> i32 {
         self.board.boards[self.board.side_to_move as usize].count_ones() as i32
             - self.board.boards[1 - self.board.side_to_move as usize].count_ones() as i32
             + singles(self.board.boards[self.board.side_to_move as usize]).count_ones() as i32
+            - singles(self.board.boards[1 - self.board.side_to_move as usize]).count_ones() as i32
     }
 }
