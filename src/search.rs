@@ -78,12 +78,14 @@ impl Search {
             unmake_move(&mut self.board, mov, delta);
 
             if score > best_score {
-                alpha = score;
                 best_move = *mov;
                 best_score = score;
-            }
-            if alpha >= beta {
-                break;
+
+                alpha = alpha.max(score);
+
+                if alpha >= beta {
+                    break;
+                }
             }
         }
         *out = best_move;
