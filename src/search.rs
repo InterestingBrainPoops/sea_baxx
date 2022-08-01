@@ -1,3 +1,4 @@
+use core::time;
 use std::{
     hash::Hash,
     sync::{Arc, Mutex},
@@ -19,6 +20,7 @@ pub struct Search {
 
 pub struct Controller {
     pub end_time: Instant,
+    pub max_depth: u8,
 }
 
 impl Search {
@@ -51,9 +53,27 @@ impl Search {
     }
 
     /// find the best move for a position
-    pub fn find_best_move(&mut self, _info: &GoInfo) {
-        let controller = Controller {
-            end_time: Instant::now() + Duration::from_millis(40),
+    pub fn find_best_move(&mut self, info: &GoInfo) {
+        let my_time;
+        let other_time;
+        match self.my_side {
+            Side::Black => {
+                my_time = info.btime.unwrap();
+                other_time = info.wtime.unwrap();
+            }
+            Side::White => {
+                my_time = info.wtime.unwrap();
+                other_time = info.btime.unwrap();
+            }
+        };
+        let time_left = if other_time < my_time {
+            (my_time - other_time).max(my_time - other_time + 30)
+        } else {
+            my_time / 10
+        };
+        let mut controller = Controller {
+            end_time: Instant::now() + Duration::from_millis(time_left.into()),
+            max_depth: 1,
         };
         let mut bestmove = Move {
             null: false,
@@ -62,6 +82,7 @@ impl Search {
             capture_square: 0,
         };
         for depth in 1..10 {
+            controller.max_depth = depth;
             let mut mov = Move {
                 null: false,
                 from: 0,
@@ -69,11 +90,11 @@ impl Search {
                 capture_square: 0,
             };
             let score = self.negamax(&controller, -100_000, 100_000, depth, &mut mov);
-            println!("info depth {depth}");
-            if Instant::now() > controller.end_time {
-                break;
-            } else {
+            println!("info depth {depth} score {score}");
+            if Instant::now() <= controller.end_time {
                 bestmove = mov;
+            } else {
+                break;
             }
         }
 
@@ -109,7 +130,8 @@ impl Search {
             to: 0,
             capture_square: 0,
         };
-        let moves = generate_moves(&self.board);
+        let mut moves = generate_moves(&self.board);
+
         for mov in &moves {
             let delta = make_move(&mut self.board, mov);
             let score = -self.negamax(controller, -beta, -alpha, depth - 1, out);
