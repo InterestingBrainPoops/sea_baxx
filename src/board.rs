@@ -234,4 +234,8 @@ impl Board {
     pub fn empty(&self) -> u64 {
         !self.blockers()
     }
+
+    pub fn hash(&self) -> u64 {
+        return self.boards[0] | self.boards[1];
+    }
 }

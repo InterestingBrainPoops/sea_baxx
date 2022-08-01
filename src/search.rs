@@ -1,4 +1,8 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    hash::Hash,
+    sync::{Arc, Mutex},
+    time::{Duration, Instant},
+};
 
 use crate::{
     board::{Board, Side, Status},
@@ -11,6 +15,10 @@ pub struct Search {
     pub shared: Arc<Mutex<Shared>>,
     pub board: Board,
     pub my_side: Side,
+}
+
+pub struct Controller {
+    pub end_time: Instant,
 }
 
 impl Search {
@@ -44,18 +52,47 @@ impl Search {
 
     /// find the best move for a position
     pub fn find_best_move(&mut self, _info: &GoInfo) {
+        let controller = Controller {
+            end_time: Instant::now() + Duration::from_millis(40),
+        };
         let mut bestmove = Move {
             null: false,
             from: 0,
             to: 0,
             capture_square: 0,
         };
-        self.negamax(-100_000, 100_000, 3, &mut bestmove);
+        for depth in 1..10 {
+            let mut mov = Move {
+                null: false,
+                from: 0,
+                to: 0,
+                capture_square: 0,
+            };
+            let score = self.negamax(&controller, -100_000, 100_000, depth, &mut mov);
+            println!("info depth {depth}");
+            if Instant::now() > controller.end_time {
+                break;
+            } else {
+                bestmove = mov;
+            }
+        }
+
         println!("bestmove {}", bestmove);
     }
 
     /// negamax
-    pub fn negamax(&mut self, mut alpha: i32, beta: i32, depth: u8, out: &mut Move) -> i32 {
+    pub fn negamax(
+        &mut self,
+        controller: &Controller,
+        mut alpha: i32,
+        beta: i32,
+        depth: u8,
+        out: &mut Move,
+    ) -> i32 {
+        if Instant::now() > controller.end_time {
+            return 0;
+        }
+
         if depth == 0 || self.board.game_over() {
             return match self.board.status() {
                 Status::Draw => 0,
@@ -72,9 +109,10 @@ impl Search {
             to: 0,
             capture_square: 0,
         };
-        for mov in &generate_moves(&self.board) {
+        let moves = generate_moves(&self.board);
+        for mov in &moves {
             let delta = make_move(&mut self.board, mov);
-            let score = -self.negamax(-beta, -alpha, depth - 1, out);
+            let score = -self.negamax(controller, -beta, -alpha, depth - 1, out);
             unmake_move(&mut self.board, mov, delta);
 
             if score > best_score {

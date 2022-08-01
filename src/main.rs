@@ -13,6 +13,7 @@ use text_io::read;
 
 use crate::{
     board::{Board, Side},
+    movegen::Move,
     search::Search,
 };
 
