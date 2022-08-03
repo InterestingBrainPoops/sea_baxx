@@ -61,7 +61,7 @@ impl From<Side> for usize {
 }
 
 impl Side {
-    pub fn to_bool(&self) -> bool {
+    pub fn as_bool(&self) -> bool {
         match self {
             Side::Black => false,
             Side::White => true,
@@ -88,7 +88,7 @@ impl Board {
             full_move: 0,
         };
 
-        let parts = fen.split(" ").collect::<Vec<&str>>();
+        let parts = fen.split(' ').collect::<Vec<&str>>();
 
         // get all the board info (blockers, player 1 board, player 2 board)
 
@@ -188,8 +188,8 @@ impl Board {
         true
     }
     pub fn status(&self) -> Status {
-        let current = self.side_to_move;
-        let other = !self.side_to_move;
+        let _current = self.side_to_move;
+        let _other = !self.side_to_move;
         let both = self.current_pieces() | self.other_pieces();
         let moves = singles(singles(both));
 
@@ -214,17 +214,17 @@ impl Board {
         }
 
         if self.current_pieces().count_ones() > self.other_pieces().count_ones() {
-            return Status::Winner;
+            Status::Winner
         } else {
             Status::Loser
         }
     }
     pub fn current_pieces(&self) -> u64 {
-        return self.boards[self.side_to_move as usize];
+        self.boards[self.side_to_move as usize]
     }
 
     pub fn other_pieces(&self) -> u64 {
-        return self.boards[1 - self.side_to_move as usize];
+        self.boards[1 - self.side_to_move as usize]
     }
 
     pub fn blockers(&self) -> u64 {
@@ -236,6 +236,6 @@ impl Board {
     }
 
     pub fn hash(&self) -> u64 {
-        return self.boards[0] | self.boards[1];
+        self.boards[0] | self.boards[1]
     }
 }

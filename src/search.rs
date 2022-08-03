@@ -1,6 +1,4 @@
-use core::time;
 use std::{
-    hash::Hash,
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
@@ -8,7 +6,7 @@ use std::{
 use crate::{
     board::{Board, Side, Status},
     move_app::{make_move, unmake_move},
-    movegen::{generate_moves, singles, Move},
+    movegen::{generate_moves, Move},
     GoInfo, Shared,
 };
 
@@ -130,7 +128,7 @@ impl Search {
             to: 0,
             capture_square: 0,
         };
-        let mut moves = generate_moves(&self.board);
+        let moves = generate_moves(&self.board);
 
         for mov in &moves {
             let delta = make_move(&mut self.board, mov);

@@ -13,7 +13,6 @@ use text_io::read;
 
 use crate::{
     board::{Board, Side},
-    movegen::Move,
     search::Search,
 };
 
@@ -64,12 +63,7 @@ fn main() {
             board: Board::new("x5o/7/7/7/7/7/o5x x 0 1".to_string()),
             my_side: Side::Black,
         };
-        loop {
-            let message = if let Ok(msg) = recv.recv() {
-                msg
-            } else {
-                break;
-            };
+        while let Ok(message) = recv.recv() {
             match message {
                 SearchMessage::NewGame => {
                     shared_for_thread.lock().expect("error").stop = false;
@@ -91,7 +85,7 @@ fn main() {
     loop {
         let t = get_input();
         let input = t.trim();
-        match input.split(" ").next().unwrap() {
+        match input.split(' ').next().unwrap() {
             "uainewgame" => {
                 send.send(SearchMessage::NewGame).unwrap();
                 let _: String = read!();
@@ -138,7 +132,7 @@ macro_rules! find_arg {
 
 impl GoInfo {
     pub fn new(input: String) -> Self {
-        let split: Vec<&str> = input.split(" ").collect();
+        let split: Vec<&str> = input.split(' ').collect();
         let out = Self {
             wtime: find_arg!(split, "wtime", u32),
             btime: find_arg!(split, "btime", u32),

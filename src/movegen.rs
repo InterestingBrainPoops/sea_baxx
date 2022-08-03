@@ -172,14 +172,14 @@ pub fn generate_moves(board: &Board) -> Vec<Move> {
 }
 
 pub fn singles(bb: u64) -> u64 {
-    return (bb << 1 | bb >> 1 | bb << 8 | bb >> 8 | bb << 9 | bb >> 9 | bb << 7 | bb >> 7)
-        & 0x7f7f7f7f7f7f7f_u64;
+    (bb << 1 | bb >> 1 | bb << 8 | bb >> 8 | bb << 9 | bb >> 9 | bb << 7 | bb >> 7)
+        & 0x7f7f7f7f7f7f7f_u64
 }
 
 pub fn doubles(bb: u64) -> u64 {
-    return ((bb << 2 | bb << 10 | bb << 18 | bb >> 6 | bb >> 14 | bb << 17 | bb >> 15) & 0x7e7e7e7e7e7e7e) |
+    ((bb << 2 | bb << 10 | bb << 18 | bb >> 6 | bb >> 14 | bb << 17 | bb >> 15) & 0x7e7e7e7e7e7e7e) |
         // center
         ((bb << 16 | bb >> 16) & 0x7f7f7f7f7f7f7f) |
         // left
-        ((bb >> 2 | bb >> 10 | bb >> 18 | bb << 6 | bb << 14 | bb << 15 | bb >> 17) & 0x3f3f3f3f3f3f3f);
+        ((bb >> 2 | bb >> 10 | bb >> 18 | bb << 6 | bb << 14 | bb << 15 | bb >> 17) & 0x3f3f3f3f3f3f3f)
 }
