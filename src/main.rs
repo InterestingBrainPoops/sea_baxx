@@ -1,7 +1,9 @@
 mod board;
+mod generator;
 mod move_app;
 mod movegen;
 mod perft;
+mod pst;
 mod search;
 
 use std::{
