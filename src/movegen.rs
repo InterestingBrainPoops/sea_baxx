@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use crate::board::{BitBoard, Board};
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default)]
 pub struct Move {
     pub null: bool,
     pub from: BitBoard,

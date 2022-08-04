@@ -62,6 +62,7 @@ fn main() {
             shared: Arc::clone(&shared_for_thread),
             board: Board::new("x5o/7/7/7/7/7/o5x x 0 1".to_string()),
             my_side: Side::Black,
+            killers: [None; 11],
         };
         while let Ok(message) = recv.recv() {
             match message {

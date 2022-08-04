@@ -14,6 +14,7 @@ pub struct Search {
     pub shared: Arc<Mutex<Shared>>,
     pub board: Board,
     pub my_side: Side,
+    pub killers: [Option<Move>; 11],
 }
 
 pub struct Controller {
@@ -21,9 +22,21 @@ pub struct Controller {
     pub max_depth: u8,
 }
 
+macro_rules! ternary {
+    ($c:expr, $v:expr, $v1:expr) => {
+        if $c {
+            $v
+        } else {
+            $v1
+        }
+    };
+}
+
 impl Search {
     /// do the things like clearing the hash, resetting history, etc
-    pub fn setup_newgame(&mut self) {}
+    pub fn setup_newgame(&mut self) {
+        self.killers = [None; 11];
+    }
     /// initialize the board state using stuff
     pub fn set_position(&mut self, input: String) {
         let is_startpos = input.contains("startpos");
@@ -128,7 +141,13 @@ impl Search {
             to: 0,
             capture_square: 0,
         };
-        let moves = generate_moves(&self.board);
+        let mut moves = generate_moves(&self.board);
+        if let Some(mov) = self.killers[(controller.max_depth - depth) as usize] {
+            if moves.contains(&mov) {
+                let pos = moves.iter().position(|&s| s == mov).unwrap();
+                moves.swap(0, pos);
+            }
+        }
 
         for mov in &moves {
             let delta = make_move(&mut self.board, mov);
@@ -142,6 +161,9 @@ impl Search {
                 alpha = alpha.max(score);
 
                 if alpha >= beta {
+                    if mov.capture_square.count_ones() + ternary!(mov.from == 0, 1, 0) <= 1 {
+                        self.killers[(controller.max_depth - depth) as usize] = Some(*mov);
+                    }
                     break;
                 }
             }
