@@ -1,9 +1,10 @@
 use crate::{
-    board::{Board},
+    board::Board,
     move_app::{make_move, unmake_move},
     movegen::generate_moves,
 };
 
+#[allow(dead_code)]
 fn perft(board: &mut Board, depth: u8, max_depth: u8) -> u64 {
     let mut nodes = 0;
     if depth == 0 {
@@ -12,7 +13,7 @@ fn perft(board: &mut Board, depth: u8, max_depth: u8) -> u64 {
     let mut counter = 0;
     for mov in &generate_moves(board) {
         let mut subtree_nodes = 0;
-        let t1 = board.clone();
+        let t1 = *board;
         let delta = make_move(board, mov);
         let inc = perft(board, depth - 1, max_depth);
         subtree_nodes += inc;
@@ -31,10 +32,9 @@ fn perft(board: &mut Board, depth: u8, max_depth: u8) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    
 
     use crate::{
-        board::{Board},
+        board::Board,
         move_app::make_move,
         movegen::{bb_to_an, generate_moves},
     };
@@ -161,7 +161,7 @@ mod tests {
 
                 println!("Count: {}", moves.len());
                 println!("Moves: {:?}", moves);
-                let nodes = perft(&mut board, 2 as u8, 2 as u8);
+                let nodes = perft(&mut board, 2_u8, 2_u8);
                 assert_eq!(*number, nodes);
             } else {
                 let nodes = perft(&mut board, depth as u8, depth as u8);

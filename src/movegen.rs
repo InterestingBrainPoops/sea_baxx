@@ -45,11 +45,11 @@ pub fn bb_to_an(bb: u64) -> String {
     let num = [1, 2, 3, 4, 5, 6, 7];
     let ld_zero = bb.trailing_zeros();
 
-    return format!(
+    format!(
         "{}{}",
         alph[(ld_zero % 8) as usize],
         num[(ld_zero / 8) as usize]
-    );
+    )
 }
 
 pub fn an_to_bb(an: String) -> u64 {

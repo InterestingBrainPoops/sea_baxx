@@ -79,80 +79,39 @@ impl Search {
             to: 0,
             capture_square: 0,
         };
-        for depth in 1..10 {
-            controller.max_depth = depth;
-            let mut mov = Move {
-                null: false,
-                from: 0,
-                to: 0,
-                capture_square: 0,
-            };
-            let score = self.negamax(&controller, -100_000, 100_000, depth, &mut mov);
-            println!("info depth {depth} score {score}");
-            if Instant::now() <= controller.end_time {
-                bestmove = mov;
-            } else {
-                break;
-            }
+        let mut root = Node::new(&self.board);
+        while Instant::now() < controller.end_time {
+            self.iterate(&mut root);
         }
 
         println!("bestmove {}", bestmove);
     }
-
-    /// negamax
-    pub fn negamax(
-        &mut self,
-        controller: &Controller,
-        mut alpha: i32,
-        beta: i32,
-        depth: u8,
-        out: &mut Move,
-    ) -> i32 {
-        if Instant::now() > controller.end_time {
-            return 0;
+    fn iterate(&self, node: &mut Node) {
+        let mut leaf = node;
+        let mut path = vec![leaf];
+        while !leaf.children.iter().any(|x| x.num_simulations == 0) {
+            leaf = leaf.best_ucb();
         }
-
-        if depth == 0 || self.board.game_over() {
-            return match self.board.status() {
-                Status::Draw => 0,
-                Status::Winner => 1000,
-                Status::Loser => -1000,
-                Status::Ongoing => self.eval(),
-            };
-        }
-
-        let mut best_score = i32::MIN;
-        let mut best_move = Move {
-            null: false,
-            from: 0,
-            to: 0,
-            capture_square: 0,
-        };
-        let moves = generate_moves(&self.board);
-
-        for mov in &moves {
-            let delta = make_move(&mut self.board, mov);
-            let score = -self.negamax(controller, -beta, -alpha, depth - 1, out);
-            unmake_move(&mut self.board, mov, delta);
-
-            if score > best_score {
-                best_move = *mov;
-                best_score = score;
-
-                alpha = alpha.max(score);
-
-                if alpha >= beta {
-                    break;
-                }
-            }
-        }
-        *out = best_move;
-        best_score
     }
+}
 
-    fn eval(&self) -> i32 {
-        let us = self.board.boards[self.board.side_to_move as usize];
-        let them = self.board.boards[1 - self.board.side_to_move as usize];
-        us.count_ones() as i32 - them.count_ones() as i32
+#[derive(Debug, Clone)]
+struct Node {
+    children: Vec<Node>,
+    board: Board,
+    num_simulations: u32,
+    cumulative_score: f64,
+}
+
+impl Node {
+    fn new(board: &Board) -> Node {
+        todo!();
     }
+    fn best_ucb(&mut self) -> &mut Node {
+        &mut self.children[0]
+    }
+    fn rollout(&self) -> f64 {
+        todo!();
+    }
+    fn expand(&mut self) {}
 }

@@ -5,7 +5,7 @@ mod perft;
 mod search;
 
 use std::{
-    io::{self, BufRead},
+    io::{self},
     sync::{mpsc::channel, Arc, Mutex},
     thread,
 };

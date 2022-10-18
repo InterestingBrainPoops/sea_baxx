@@ -1,12 +1,7 @@
 use crate::{
-    board::{BitBoard, Board, Side},
+    board::{Board, Side},
     movegen::Move,
 };
-
-pub struct Delta {
-    old_spot: BitBoard,
-    captures: BitBoard,
-}
 
 pub fn make_move(board: &mut Board, mov: &Move) -> u8 {
     // if mov.to == 8 {
