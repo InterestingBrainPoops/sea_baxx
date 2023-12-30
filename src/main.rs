@@ -3,9 +3,10 @@ mod move_app;
 mod movegen;
 mod perft;
 mod search;
+mod table;
 
 use std::{
-    io::{self, BufRead},
+    io::{self},
     sync::{mpsc::channel, Arc, Mutex},
     thread,
 };
@@ -14,6 +15,7 @@ use text_io::read;
 use crate::{
     board::{Board, Side},
     search::Search,
+    table::Table,
 };
 
 fn get_input() -> String {
@@ -44,21 +46,23 @@ fn main() {
     println!("uaiok");
     // listen to option settings
 
-    // listen for isready
-    loop {
-        let input: String = read!();
-        if input != *"isready" {
-            println!("Invalid input!");
-        } else {
-            break;
-        }
-    }
+    // // listen for isready
+    // loop {
+    //     let input: String = read!();
+    //     if input != *"isready" {
+    //         println!("Invalid input!");
+    //     } else {
+    //         break;
+    //     }
+    // }
     // setup my stuff
     let (send, recv) = channel::<SearchMessage>();
     let shared = Arc::new(Mutex::new(Shared { stop: false }));
     let shared_for_thread = Arc::clone(&shared);
     thread::spawn(move || {
         let mut search = Search {
+            nodes: 0,
+            table: Table::new(1_000_000),
             shared: Arc::clone(&shared_for_thread),
             board: Board::new("x5o/7/7/7/7/7/o5x x 0 1".to_string()),
             my_side: Side::Black,
@@ -75,12 +79,13 @@ fn main() {
                 SearchMessage::SetPosition(info) => {
                     search.set_position(info);
                 }
+                SearchMessage::Ready => {
+                    println!("readyok");
+                }
             }
         }
     });
     // send readyok
-    println!("readyok");
-
     // loop with a match for all the uai commands
     loop {
         let t = get_input();
@@ -88,13 +93,8 @@ fn main() {
         match input.split(' ').next().unwrap() {
             "uainewgame" => {
                 send.send(SearchMessage::NewGame).unwrap();
-                let _: String = read!();
-
-                println!("readyok");
             }
             "position" => {
-                let _: String = read!();
-                println!("readyok");
                 send.send(SearchMessage::SetPosition(String::from(
                     input.get(9..).unwrap(),
                 )))
@@ -109,7 +109,9 @@ fn main() {
             "stop" => {
                 shared.lock().unwrap().stop = true;
             }
-
+            "isready" => {
+                send.send(SearchMessage::Ready).unwrap();
+            }
             "ponderhit" => todo!(),
             "quit" => {
                 break;
@@ -172,6 +174,7 @@ enum SearchMessage {
     NewGame,
     SetPosition(String),
     Go(GoInfo),
+    Ready,
 }
 
 pub struct Shared {

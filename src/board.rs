@@ -139,32 +139,6 @@ impl Board {
         out
     }
 
-    // pub fn game_state(&self) -> State {
-    //     if self.half_move >= 50 {
-    //         return State::Draw;
-    //     }
-    //     if !(self.boards[0] & self.boards[1] & self.blockers) == 0 {
-    //         match self.boards[0]
-    //             .count_ones()
-    //             .cmp(&self.boards[1].count_ones())
-    //         {
-    //             Ordering::Greater => return State::Winner(Side::Black),
-    //             Ordering::Less => return State::Winner(Side::White),
-    //             Ordering::Equal => return State::Draw,
-    //         }
-    //     }
-    //     if self.boards[0] == 0 {
-    //         return State::Winner(Side::White);
-    //     } else if self.boards[1] == 0 {
-    //         return State::Winner(Side::Black);
-    //     }
-
-    //     if singles(singles(self.current_pieces() | self.other_pieces())) & self.empty() != 0 {
-    //         State::Ongoing
-    //     }
-
-    // }
-
     pub fn game_over(&self) -> bool {
         let both = self.current_pieces() | self.other_pieces();
         let moves = singles(singles(both));

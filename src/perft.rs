@@ -1,5 +1,5 @@
 use crate::{
-    board::{Board},
+    board::Board,
     move_app::{make_move, unmake_move},
     movegen::generate_moves,
 };
@@ -31,10 +31,9 @@ fn perft(board: &mut Board, depth: u8, max_depth: u8) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    
 
     use crate::{
-        board::{Board},
+        board::Board,
         move_app::make_move,
         movegen::{bb_to_an, generate_moves},
     };

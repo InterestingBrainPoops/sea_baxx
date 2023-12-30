@@ -1,4 +1,5 @@
 use std::{
+    slice::ChunksMut,
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
@@ -6,12 +7,15 @@ use std::{
 use crate::{
     board::{Board, Side, Status},
     move_app::{make_move, unmake_move},
-    movegen::{generate_moves, Move},
+    movegen::{generate_moves, singles, Move},
+    table::{Entry, NodeType, Table},
     GoInfo, Shared,
 };
 
 pub struct Search {
+    pub nodes: u64,
     pub shared: Arc<Mutex<Shared>>,
+    pub table: Table,
     pub board: Board,
     pub my_side: Side,
 }
@@ -23,7 +27,9 @@ pub struct Controller {
 
 impl Search {
     /// do the things like clearing the hash, resetting history, etc
-    pub fn setup_newgame(&mut self) {}
+    pub fn setup_newgame(&mut self) {
+        self.table.reset();
+    }
     /// initialize the board state using stuff
     pub fn set_position(&mut self, input: String) {
         let is_startpos = input.contains("startpos");
@@ -73,6 +79,7 @@ impl Search {
             end_time: Instant::now() + Duration::from_millis(time_left.into()),
             max_depth: 1,
         };
+        let t0 = Instant::now();
         let mut bestmove = Move {
             null: false,
             from: 0,
@@ -87,9 +94,16 @@ impl Search {
                 to: 0,
                 capture_square: 0,
             };
+            self.nodes = 0;
             let score = self.negamax(&controller, -100_000, 100_000, depth, &mut mov);
-            println!("info depth {depth} score {score}");
-            if Instant::now() <= controller.end_time {
+            let t1 = Instant::now();
+            println!(
+                "info depth {depth} score {score}, nps {}, nodes {}, time {}",
+                (self.nodes as f64 / (t1 - t0).as_secs() as f64) as u64,
+                self.nodes,
+                (t1 - t0).as_millis()
+            );
+            if t1 <= controller.end_time {
                 bestmove = mov;
             } else {
                 break;
@@ -128,9 +142,24 @@ impl Search {
             to: 0,
             capture_square: 0,
         };
-        let moves = generate_moves(&self.board);
-
+        let mut moves = generate_moves(&self.board);
+        if let Some(entry) = &self.table[&self.board] {
+            if let Some(killer_move) = entry.killer_move {
+                if moves.contains(&killer_move) {
+                    let index = moves
+                        .iter()
+                        .enumerate()
+                        .find(|(_, mov)| *mov == &killer_move)
+                        .unwrap()
+                        .0;
+                    moves.swap(0, index)
+                }
+            }
+            // hash move in move ordering
+        }
+        let mut node_type = NodeType::Full;
         for mov in &moves {
+            self.nodes += 1;
             let delta = make_move(&mut self.board, mov);
             let score = -self.negamax(controller, -beta, -alpha, depth - 1, out);
             unmake_move(&mut self.board, mov, delta);
@@ -142,17 +171,36 @@ impl Search {
                 alpha = alpha.max(score);
 
                 if alpha >= beta {
+                    node_type = NodeType::Cutoff;
                     break;
                 }
             }
         }
         *out = best_move;
+        let entry = &mut self.table[&self.board];
+        if let Some(x) = entry {
+            if node_type == NodeType::Cutoff {
+                x.killer_move = Some(best_move);
+            }
+            if x.depth < depth && node_type == NodeType::Full {
+                x.score = best_score;
+                x.hash_move = best_move;
+                x.node_type = node_type;
+                x.depth = depth;
+            }
+        } else {
+            self.table[&self.board] = Some(Entry::new(best_move, best_score, depth, node_type));
+        }
         best_score
     }
 
     fn eval(&self) -> i32 {
         let us = self.board.boards[self.board.side_to_move as usize];
         let them = self.board.boards[1 - self.board.side_to_move as usize];
-        us.count_ones() as i32 - them.count_ones() as i32
+        let piece_count = us.count_ones() as i32 - them.count_ones() as i32;
+        let mobilty =
+            (singles(us) & !us).count_ones() as i32 - (singles(them) & !them).count_ones() as i32;
+
+        piece_count
     }
 }
