@@ -66,27 +66,35 @@ impl Search {
 
     /// find the best move for a position
     pub fn find_best_move(&mut self, info: &GoInfo) {
-        let my_time;
-        let other_time;
-        match self.my_side {
-            Side::Black => {
-                my_time = info.btime.unwrap();
-                other_time = info.wtime.unwrap();
+        let mut controller;
+        if info.infinite {
+            controller = Controller {
+                end_time: Instant::now() + Duration::from_secs(1000),
+                max_depth: 1,
             }
-            Side::White => {
-                my_time = info.wtime.unwrap();
-                other_time = info.btime.unwrap();
-            }
-        };
-        let time_left = if other_time < my_time {
-            (my_time - other_time).max(my_time - other_time + 30)
         } else {
-            my_time / 10
-        };
-        let mut controller = Controller {
-            end_time: Instant::now() + Duration::from_millis(time_left.into()),
-            max_depth: 1,
-        };
+            let my_time;
+            let other_time;
+            match self.my_side {
+                Side::Black => {
+                    my_time = info.btime.unwrap();
+                    other_time = info.wtime.unwrap();
+                }
+                Side::White => {
+                    my_time = info.wtime.unwrap();
+                    other_time = info.btime.unwrap();
+                }
+            };
+            let time_left = if other_time < my_time {
+                (my_time - other_time).max(my_time - other_time + 30)
+            } else {
+                my_time / 10
+            };
+            controller = Controller {
+                end_time: Instant::now() + Duration::from_millis(time_left.into()),
+                max_depth: 1,
+            };
+        }
         let t0 = Instant::now();
         let mut bestmove = Move {
             null: false,
@@ -98,7 +106,8 @@ impl Search {
             killer_move: None,
             pv_move: None,
         });
-        for depth in 1..50 {
+        let max_depth = if info.infinite { 255 } else { 50 };
+        for depth in 1..max_depth {
             self.stack_storage.insert(
                 0,
                 SearchData {
@@ -112,7 +121,7 @@ impl Search {
             let t1 = Instant::now();
             println!(
                 "info depth {depth} score {score}, nps {}, nodes {}, time {}",
-                (self.nodes as f64 / (t1 - t0).as_secs() as f64) as u64,
+                (self.nodes as f64 / (t1 - t0).as_secs_f64()) as u64,
                 self.nodes,
                 (t1 - t0).as_millis()
             );
