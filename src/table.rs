@@ -9,7 +9,7 @@ pub struct Table {
 impl Table {
     pub fn new(size: usize) -> Table {
         let mut entries = vec![];
-        for x in 0..size {
+        for _ in 0..size {
             entries.push(None);
         }
         Table { entries: entries }
@@ -35,7 +35,7 @@ impl Index<&Board> for Table {
 }
 
 pub struct Entry {
-    pub killer_move: Option<Move>,
+    pub hash: u64,
     pub hash_move: Move,
     pub score: i32,
     pub depth: u8,
@@ -43,14 +43,15 @@ pub struct Entry {
 }
 #[derive(PartialEq, Eq)]
 pub enum NodeType {
-    Full,
-    Cutoff,
+    Upper,
+    Lower,
+    Exact,
 }
 
 impl Entry {
-    pub fn new(hash_move: Move, score: i32, depth: u8, node_type: NodeType) -> Entry {
+    pub fn new(hash: u64, hash_move: Move, score: i32, depth: u8, node_type: NodeType) -> Entry {
         Entry {
-            killer_move: None,
+            hash,
             hash_move,
             score,
             depth,

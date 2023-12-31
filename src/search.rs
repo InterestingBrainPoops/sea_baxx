@@ -1,4 +1,5 @@
 use std::{
+    fmt::Alignment,
     slice::ChunksMut,
     sync::{Arc, Mutex},
     time::{Duration, Instant},
@@ -8,6 +9,7 @@ use crate::{
     board::{Board, Side, Status},
     move_app::{make_move, unmake_move},
     movegen::{generate_moves, singles, Move},
+    movepicker::MovePicker,
     table::{Entry, NodeType, Table},
     GoInfo, Shared,
 };
@@ -18,8 +20,13 @@ pub struct Search {
     pub table: Table,
     pub board: Board,
     pub my_side: Side,
+    pub stack_storage: Vec<SearchData>,
 }
 
+pub struct SearchData {
+    killer_move: Option<Move>,
+    pv_move: Option<Move>,
+}
 pub struct Controller {
     pub end_time: Instant,
     pub max_depth: u8,
@@ -29,6 +36,7 @@ impl Search {
     /// do the things like clearing the hash, resetting history, etc
     pub fn setup_newgame(&mut self) {
         self.table.reset();
+        self.stack_storage = vec![];
     }
     /// initialize the board state using stuff
     pub fn set_position(&mut self, input: String) {
@@ -86,16 +94,21 @@ impl Search {
             to: 0,
             capture_square: 0,
         };
-        for depth in 1..10 {
+        self.stack_storage.push(SearchData {
+            killer_move: None,
+            pv_move: None,
+        });
+        for depth in 1..50 {
+            self.stack_storage.insert(
+                0,
+                SearchData {
+                    killer_move: None,
+                    pv_move: None,
+                },
+            );
             controller.max_depth = depth;
-            let mut mov = Move {
-                null: false,
-                from: 0,
-                to: 0,
-                capture_square: 0,
-            };
             self.nodes = 0;
-            let score = self.negamax(&controller, -100_000, 100_000, depth, &mut mov);
+            let score = self.negamax(&controller, -100_000, 100_000, depth);
             let t1 = Instant::now();
             println!(
                 "info depth {depth} score {score}, nps {}, nodes {}, time {}",
@@ -104,7 +117,7 @@ impl Search {
                 (t1 - t0).as_millis()
             );
             if t1 <= controller.end_time {
-                bestmove = mov;
+                bestmove = self.stack_storage[depth as usize].pv_move.unwrap();
             } else {
                 break;
             }
@@ -118,9 +131,8 @@ impl Search {
         &mut self,
         controller: &Controller,
         mut alpha: i32,
-        beta: i32,
+        mut beta: i32,
         depth: u8,
-        out: &mut Move,
     ) -> i32 {
         if Instant::now() > controller.end_time {
             return 0;
@@ -135,6 +147,9 @@ impl Search {
             };
         }
 
+        // probe tt
+        let original_alpha = alpha;
+
         let mut best_score = i32::MIN;
         let mut best_move = Move {
             null: false,
@@ -143,57 +158,72 @@ impl Search {
             capture_square: 0,
         };
         let mut moves = generate_moves(&self.board);
+        let mut tt_move = None;
         if let Some(entry) = &self.table[&self.board] {
-            if let Some(killer_move) = entry.killer_move {
-                if moves.contains(&killer_move) {
-                    let index = moves
-                        .iter()
-                        .enumerate()
-                        .find(|(_, mov)| *mov == &killer_move)
-                        .unwrap()
-                        .0;
-                    moves.swap(0, index)
+            if entry.hash == self.board.hash() {
+                // tt move
+                if moves.contains(&entry.hash_move) {
+                    tt_move = Some(entry.hash_move);
                 }
             }
-            // hash move in move ordering
         }
-        let mut node_type = NodeType::Full;
-        for mov in &moves {
+        let mut killer_move = None;
+        // // killer move
+        if let Some(killer_entry) = self.stack_storage[depth as usize].killer_move {
+            let num = if let Some(tt_move) = tt_move {
+                tt_move == killer_entry
+            } else {
+                false
+            };
+            if moves.contains(&killer_entry) && !num {
+                killer_move = Some(killer_entry);
+            }
+        }
+
+        let movepicker = MovePicker::new(moves, tt_move, killer_move);
+
+        let new_moves = movepicker.sort();
+
+        for mov in &new_moves {
             self.nodes += 1;
             let delta = make_move(&mut self.board, mov);
-            let score = -self.negamax(controller, -beta, -alpha, depth - 1, out);
+            let score = -self.negamax(controller, -beta, -alpha, depth - 1);
             unmake_move(&mut self.board, mov, delta);
 
             if score > best_score {
-                best_move = *mov;
                 best_score = score;
 
-                alpha = alpha.max(score);
-
-                if alpha >= beta {
-                    node_type = NodeType::Cutoff;
-                    break;
+                best_move = *mov;
+                self.stack_storage[depth as usize].pv_move = Some(*mov);
+                if score > alpha {
+                    alpha = score;
                 }
             }
+
+            if alpha >= beta {
+                self.stack_storage[depth as usize].killer_move = Some(*mov);
+                break;
+            }
         }
-        *out = best_move;
-        let entry = &mut self.table[&self.board];
-        if let Some(x) = entry {
-            if node_type == NodeType::Cutoff {
-                x.killer_move = Some(best_move);
-            }
-            if x.depth < depth && node_type == NodeType::Full {
-                x.score = best_score;
-                x.hash_move = best_move;
-                x.node_type = node_type;
-                x.depth = depth;
-            }
+
+        let node_type = if best_score <= original_alpha {
+            NodeType::Upper
+        } else if best_score >= beta {
+            NodeType::Lower
         } else {
-            self.table[&self.board] = Some(Entry::new(best_move, best_score, depth, node_type));
-        }
+            NodeType::Exact
+        };
+
+        self.table[&self.board] = Some(Entry::new(
+            self.board.hash(),
+            best_move,
+            best_score,
+            depth,
+            node_type,
+        ));
+
         best_score
     }
-
     fn eval(&self) -> i32 {
         let us = self.board.boards[self.board.side_to_move as usize];
         let them = self.board.boards[1 - self.board.side_to_move as usize];

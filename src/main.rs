@@ -1,6 +1,7 @@
 mod board;
 mod move_app;
 mod movegen;
+mod movepicker;
 mod perft;
 mod search;
 mod table;
@@ -61,8 +62,9 @@ fn main() {
     let shared_for_thread = Arc::clone(&shared);
     thread::spawn(move || {
         let mut search = Search {
+            stack_storage: vec![],
             nodes: 0,
-            table: Table::new(1_000_000),
+            table: Table::new(2_000_000),
             shared: Arc::clone(&shared_for_thread),
             board: Board::new("x5o/7/7/7/7/7/o5x x 0 1".to_string()),
             my_side: Side::Black,
@@ -147,8 +149,7 @@ impl GoInfo {
             movetime: find_arg!(split, "movetime", u32),
             infinite: {
                 if split.contains(&"infinite") {
-                    let x = split.iter().position(|&r| r == "infinite").unwrap() + 1;
-                    split[x].parse::<bool>().unwrap()
+                    true
                 } else {
                     false
                 }
