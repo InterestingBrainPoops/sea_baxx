@@ -4,6 +4,8 @@ use crate::{
     movegen::generate_moves,
 };
 
+// clippy complains about this for some godawful reason
+#[allow(dead_code)]
 fn perft(board: &mut Board, depth: u8, max_depth: u8) -> u64 {
     let mut nodes = 0;
     if depth == 0 {
