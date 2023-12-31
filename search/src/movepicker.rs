@@ -1,4 +1,4 @@
-use crate::movegen::Move;
+use game::movegen::Move;
 
 pub struct MovePicker {
     moves: Vec<Move>,

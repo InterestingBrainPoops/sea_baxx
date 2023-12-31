@@ -1,26 +1,78 @@
+mod movepicker;
+mod table;
+
 use std::{
-    fmt::Alignment,
-    slice::ChunksMut,
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
 
-use crate::{
+use crate::movepicker::MovePicker;
+use crate::table::{Entry, NodeType, Table};
+use eval::Eval;
+use game::{
     board::{Board, Side, Status},
     move_app::{make_move, unmake_move},
-    movegen::{generate_moves, singles, Move},
-    movepicker::MovePicker,
-    table::{Entry, NodeType, Table},
-    GoInfo, Shared,
+    movegen::{generate_moves, Move},
 };
+pub struct Shared {
+    pub stop: bool,
+}
+pub struct GoInfo {
+    pub wtime: Option<u32>,
+    pub btime: Option<u32>,
+    pub winc: Option<u32>,
+    pub binc: Option<u32>,
+    pub moves_to_go: Option<u32>,
+    pub depth: Option<u32>,
+    pub nodes: Option<u32>,
+    pub mate: Option<u32>,
+    pub movetime: Option<u32>,
+    pub infinite: bool,
+}
+macro_rules! find_arg {
+    ($split : ident , $x: expr, $y : ty) => {
+        if $split.contains(&$x) {
+            let x = $split.iter().position(|&r| r == $x).unwrap() + 1;
+            Some($split[x].parse::<$y>().unwrap())
+        } else {
+            None
+        }
+    };
+}
+
+impl GoInfo {
+    pub fn new(input: String) -> Self {
+        let split: Vec<&str> = input.split(' ').collect();
+        let out = Self {
+            wtime: find_arg!(split, "wtime", u32),
+            btime: find_arg!(split, "btime", u32),
+            winc: find_arg!(split, "winc", u32),
+            binc: find_arg!(split, "binc", u32),
+            moves_to_go: find_arg!(split, "movestogo", u32),
+            depth: find_arg!(split, "depth", u32),
+            nodes: find_arg!(split, "nodes", u32),
+            mate: find_arg!(split, "mate", u32),
+            movetime: find_arg!(split, "movetime", u32),
+            infinite: {
+                if split.contains(&"infinite") {
+                    true
+                } else {
+                    false
+                }
+            },
+        };
+        out
+    }
+}
 
 pub struct Search {
-    pub nodes: u64,
-    pub shared: Arc<Mutex<Shared>>,
-    pub table: Table,
-    pub board: Board,
-    pub my_side: Side,
-    pub stack_storage: Vec<SearchData>,
+    nodes: u64,
+    shared: Arc<Mutex<Shared>>,
+    table: Table,
+    board: Board,
+    my_side: Side,
+    stack_storage: Vec<SearchData>,
+    eval: Eval,
 }
 
 pub struct SearchData {
@@ -33,6 +85,17 @@ pub struct Controller {
 }
 
 impl Search {
+    pub fn new(shared: Arc<Mutex<Shared>>) -> Self {
+        Search {
+            stack_storage: vec![],
+            nodes: 0,
+            table: Table::new(2_000_000),
+            shared: shared,
+            board: Board::new("x5o/7/7/7/7/7/o5x x 0 1".to_string()),
+            my_side: Side::Black,
+            eval: Eval::new(),
+        }
+    }
     /// do the things like clearing the hash, resetting history, etc
     pub fn setup_newgame(&mut self) {
         self.table.reset();
@@ -125,7 +188,7 @@ impl Search {
                 self.nodes,
                 (t1 - t0).as_millis()
             );
-            if t1 <= controller.end_time {
+            if t1 <= controller.end_time || self.shared.lock().unwrap().stop {
                 bestmove = self.stack_storage[depth as usize].pv_move.unwrap();
             } else {
                 break;
@@ -140,10 +203,10 @@ impl Search {
         &mut self,
         controller: &Controller,
         mut alpha: i32,
-        mut beta: i32,
+        beta: i32,
         depth: u8,
     ) -> i32 {
-        if Instant::now() > controller.end_time {
+        if Instant::now() > controller.end_time || self.shared.lock().unwrap().stop {
             return 0;
         }
 
@@ -152,7 +215,7 @@ impl Search {
                 Status::Draw => 0,
                 Status::Winner => 1000,
                 Status::Loser => -1000,
-                Status::Ongoing => self.eval(),
+                Status::Ongoing => self.eval.evaluate(&self.board),
             };
         }
 
@@ -166,7 +229,7 @@ impl Search {
             to: 0,
             capture_square: 0,
         };
-        let mut moves = generate_moves(&self.board);
+        let moves = generate_moves(&self.board);
         let mut tt_move = None;
         if let Some(entry) = &self.table[&self.board] {
             if entry.hash == self.board.hash() {
@@ -232,14 +295,5 @@ impl Search {
         ));
 
         best_score
-    }
-    fn eval(&self) -> i32 {
-        let us = self.board.boards[self.board.side_to_move as usize];
-        let them = self.board.boards[1 - self.board.side_to_move as usize];
-        let piece_count = us.count_ones() as i32 - them.count_ones() as i32;
-        let mobilty =
-            (singles(us) & !us).count_ones() as i32 - (singles(them) & !them).count_ones() as i32;
-
-        piece_count
     }
 }

@@ -1,10 +1,5 @@
-mod board;
-mod move_app;
-mod movegen;
-mod movepicker;
-mod perft;
-mod search;
-mod table;
+use search::Search;
+use search::{GoInfo, Shared};
 
 use std::{
     io::{self},
@@ -12,12 +7,6 @@ use std::{
     thread,
 };
 use text_io::read;
-
-use crate::{
-    board::{Board, Side},
-    search::Search,
-    table::Table,
-};
 
 fn get_input() -> String {
     let mut input = String::new();
@@ -61,14 +50,7 @@ fn main() {
     let shared = Arc::new(Mutex::new(Shared { stop: false }));
     let shared_for_thread = Arc::clone(&shared);
     thread::spawn(move || {
-        let mut search = Search {
-            stack_storage: vec![],
-            nodes: 0,
-            table: Table::new(2_000_000),
-            shared: Arc::clone(&shared_for_thread),
-            board: Board::new("x5o/7/7/7/7/7/o5x x 0 1".to_string()),
-            my_side: Side::Black,
-        };
+        let mut search = Search::new(Arc::clone(&shared_for_thread));
         while let Ok(message) = recv.recv() {
             match message {
                 SearchMessage::NewGame => {
@@ -123,61 +105,9 @@ fn main() {
     }
 }
 
-macro_rules! find_arg {
-    ($split : ident , $x: expr, $y : ty) => {
-        if $split.contains(&$x) {
-            let x = $split.iter().position(|&r| r == $x).unwrap() + 1;
-            Some($split[x].parse::<$y>().unwrap())
-        } else {
-            None
-        }
-    };
-}
-
-impl GoInfo {
-    pub fn new(input: String) -> Self {
-        let split: Vec<&str> = input.split(' ').collect();
-        let out = Self {
-            wtime: find_arg!(split, "wtime", u32),
-            btime: find_arg!(split, "btime", u32),
-            winc: find_arg!(split, "winc", u32),
-            binc: find_arg!(split, "binc", u32),
-            moves_to_go: find_arg!(split, "movestogo", u32),
-            depth: find_arg!(split, "depth", u32),
-            nodes: find_arg!(split, "nodes", u32),
-            mate: find_arg!(split, "mate", u32),
-            movetime: find_arg!(split, "movetime", u32),
-            infinite: {
-                if split.contains(&"infinite") {
-                    true
-                } else {
-                    false
-                }
-            },
-        };
-        out
-    }
-}
-pub struct GoInfo {
-    pub wtime: Option<u32>,
-    pub btime: Option<u32>,
-    pub winc: Option<u32>,
-    pub binc: Option<u32>,
-    pub moves_to_go: Option<u32>,
-    pub depth: Option<u32>,
-    pub nodes: Option<u32>,
-    pub mate: Option<u32>,
-    pub movetime: Option<u32>,
-    pub infinite: bool,
-}
-
 enum SearchMessage {
     NewGame,
     SetPosition(String),
     Go(GoInfo),
     Ready,
-}
-
-pub struct Shared {
-    pub stop: bool,
 }

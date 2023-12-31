@@ -1,6 +1,6 @@
 use std::ops::{Index, IndexMut};
 
-use crate::{board::Board, movegen::Move};
+use game::{board::Board, movegen::Move};
 
 pub struct Table {
     entries: Vec<Option<Entry>>,
