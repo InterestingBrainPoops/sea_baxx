@@ -1,8 +1,10 @@
 use std::ops::Not;
 
+use serde::{Deserialize, Serialize};
+
 use crate::movegen::singles;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize, Hash)]
 pub struct Board {
     pub blockers: BitBoard,
     pub boards: [BitBoard; 2],
@@ -11,13 +13,13 @@ pub struct Board {
     pub full_move: u32,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize, Hash)]
 pub enum Side {
     Black,
     White,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize, Hash)]
 pub enum Status {
     Winner,
     Loser,
@@ -209,7 +211,7 @@ impl Board {
         !self.blockers()
     }
 
-    pub fn hash(&self) -> u64 {
+    pub fn zobrist_hash(&self) -> u64 {
         self.boards[0] | self.boards[1]
     }
 }

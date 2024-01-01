@@ -3,7 +3,7 @@ mod table;
 
 use std::{
     sync::{Arc, Mutex},
-    time::{Duration, Instant},
+    time::{Duration, Instant}, f32::MAX_10_EXP,
 };
 
 use crate::movepicker::MovePicker;
@@ -14,6 +14,8 @@ use game::{
     move_app::{make_move, unmake_move},
     movegen::{generate_moves, Move},
 };
+
+const MAX_DEPTH : u8 = 200;
 pub struct Shared {
     pub stop: bool,
 }
@@ -127,7 +129,7 @@ impl Search {
                     killer_move: None,
                     pv_move: None
                 };
-                200
+                MAX_DEPTH as usize
             ],
             search_info: SearchInfo::new(),
             table: Table::new(2_000_000),
@@ -146,6 +148,10 @@ impl Search {
                 pv_move: None,
             }
         });
+    }
+    pub fn set_position_direct(&mut self, board : &Board) {
+        self.board = *board;
+        self.my_side = board.side_to_move;
     }
     /// initialize the board state using stuff
     pub fn set_position(&mut self, input: String) {
@@ -174,7 +180,7 @@ impl Search {
     }
 
     /// find the best move for a position
-    pub fn find_best_move(&mut self, info: &GoInfo) {
+    pub fn find_best_move(&mut self, print_info: bool, info: &GoInfo) -> (Move, i32){
         // find run mode amongst : {infinite, time, depth, nodes, movetime}
         let end_cond;
         if info.infinite {
@@ -222,20 +228,22 @@ impl Search {
             capture_square: 0,
         };
 
-        let max_depth = 200; // randomly chosen
         self.search_info.reset();
-
-        for depth in 1..max_depth {
-            let score = self.negamax(&end_cond, -100_000, 100_000, depth);
+        let mut score=0;
+        for depth in 1..MAX_DEPTH {
+            score = self.negamax(&end_cond, -100_000, 100_000, depth);
             let t1 = Instant::now();
-            println!(
-                "info depth {depth} score {score}, nodes {}, time {}, tthits {}, cutoffs {}, nps {}",
-                self.search_info.nodes,
-                (t1 - t0).as_millis(), 
-                self.search_info.tt_hits,
-                self.search_info.cutoffs,
-                (self.search_info.nodes as f64 / (t1 - t0).as_secs_f64()) as u64,
-            );
+            if print_info {
+                println!(
+                    "info depth {depth} score {score}, nodes {}, time {}, tthits {}, cutoffs {}, nps {}",
+                    self.search_info.nodes,
+                    (t1 - t0).as_millis(), 
+                    self.search_info.tt_hits,
+                    self.search_info.cutoffs,
+                    (self.search_info.nodes as f64 / (t1 - t0).as_secs_f64()) as u64,
+                );
+            }
+            
             if end_cond.met(self.search_info.nodes, depth) || self.shared.lock().unwrap().stop {
                 self.shared.lock().unwrap().stop = false;
                 break;
@@ -244,7 +252,7 @@ impl Search {
             }
         }
 
-        println!("bestmove {}", bestmove);
+        (bestmove, score)
     }
 
     /// negamax
@@ -282,7 +290,7 @@ impl Search {
         let moves = generate_moves(&self.board);
         let mut tt_move = None;
         if let Some(entry) = &self.table[&self.board] {
-            if entry.hash == self.board.hash() {
+            if entry.hash == self.board.zobrist_hash() {
                 // tt move
                 if moves.contains(&entry.hash_move) {
                     self.search_info.tt_hits += 1;
@@ -343,7 +351,7 @@ impl Search {
         };
 
         self.table[&self.board] = Some(Entry::new(
-            self.board.hash(),
+            self.board.zobrist_hash(),
             best_move,
             best_score,
             depth,

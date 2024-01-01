@@ -1,2 +1,3 @@
 [workspace]
-members = ["sea_baxx", "eval", "search", "game"]
+members = ["sea_baxx", "eval", "search", "game", "datagen"]
+resolver = "2"

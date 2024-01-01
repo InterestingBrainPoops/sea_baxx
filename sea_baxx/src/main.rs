@@ -58,7 +58,8 @@ fn main() {
                     search.setup_newgame();
                 }
                 SearchMessage::Go(things) => {
-                    search.find_best_move(&things);
+                    let (best_move, _) = search.find_best_move(true, &things);
+                    println!("bestmove {}", best_move);
                 }
                 SearchMessage::SetPosition(info) => {
                     search.set_position(info);

@@ -22,7 +22,7 @@ impl Table {
 impl IndexMut<&Board> for Table {
     fn index_mut(&mut self, index: &Board) -> &mut Self::Output {
         let num_entries = self.entries.len();
-        &mut self.entries[(index.hash() % num_entries as u64) as usize]
+        &mut self.entries[(index.zobrist_hash() % num_entries as u64) as usize]
     }
 }
 
@@ -30,7 +30,7 @@ impl Index<&Board> for Table {
     type Output = Option<Entry>;
 
     fn index(&self, index: &Board) -> &Self::Output {
-        &self.entries[(index.hash() % self.entries.len() as u64) as usize]
+        &self.entries[(index.zobrist_hash() % self.entries.len() as u64) as usize]
     }
 }
 
